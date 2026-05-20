@@ -90,12 +90,14 @@ def build_system_prompt(user_id: int):
     """
 
 def reset_context(user_id: int):
-    if user_id not in user_levels:
-        return
-    if user_id not in user_scenarios:
-        return
+    level = user_levels.get(user_id, "A2")
+    scenario = user_scenarios.get(user_id, "airport")
+
     user_contexts[user_id] = [
-        {"role": "system", "content": build_system_prompt(user_id)}
+        {
+            "role": "system",
+            "content": build_system_prompt(user_id)
+        }
     ]
 
 @dp.message(CommandStart())
@@ -111,6 +113,9 @@ async def chat(message: Message):
     user_id = message.from_user.id
     text = message.text
 
+    if user_id not in user_contexts:
+        reset_context(user_id)
+    
     if text in ["A2", "B1", "B2"]:
         user_levels[user_id] = text
 
