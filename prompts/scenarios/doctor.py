@@ -11,5 +11,5 @@ SYSTEM_PROMPT = """
     - Ask simple health questions
 
     FIRST MESSAGE:
-    "Hello. What’s the problem today?"
+    "Hello. Whats the problem today?"
 """
