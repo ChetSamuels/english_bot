@@ -26,17 +26,19 @@ from prompts.scenarios.sports import SYSTEM_PROMPT as SPORTS
 from prompts.scenarios.teacher_conversation import SYSTEM_PROMPT as TEACHER
 from prompts.scenarios.university import SYSTEM_PROMPT as UNIVERSITY
 
+#Подгружаем .env файл
 load_dotenv()
-
+#Причисляем переменным значения из .env файла
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-
+#Создаем экземпляры бота и диспетчера, а также словари для хранения сценариев, уровней и контекстов пользователей
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 user_scenarios = {}
 user_levels = {}
 
+# Создаем клавиатуру для выбора уровня и сценария
 level_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="A2")],
@@ -67,13 +69,16 @@ scenario_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+# Инициализируем OpenAI клиент с использованием ключа API и базового URL для API AITunnel
 client = OpenAI(
     api_key=OPENAI_API_KEY,
     base_url="https://api.aitunnel.ru/v1/",
 )
 
+# Словарь для хранения контекста каждого пользователя
 user_contexts = {}
 
+# Функция для построения системного промпта на основе выбранного пользователем сценария и уровня
 def build_system_prompt(user_id: int):
     scenario = user_scenarios.get(user_id, "airport")
     level = user_levels.get(user_id, "A2")
@@ -89,15 +94,20 @@ def build_system_prompt(user_id: int):
     {scenario_prompt}
     """
 
+
+# Функция для сброса контекста пользователя при изменении сценария или уровня
 def reset_context(user_id: int):
-    if user_id not in user_levels:
-        return
-    if user_id not in user_scenarios:
-        return
+    level = user_levels.get(user_id, "A2")
+    scenario = user_scenarios.get(user_id, "airport")
+
     user_contexts[user_id] = [
-        {"role": "system", "content": build_system_prompt(user_id)}
+        {
+            "role": "system",
+            "content": build_system_prompt(user_id)
+        }
     ]
 
+# Обработчик команды /start, который отправляет пользователю сообщение с просьбой выбрать уровень и отображает клавиатуру для выбора уровня
 @dp.message(CommandStart())
 async def start(message: Message):
     await message.answer(
@@ -105,12 +115,16 @@ async def start(message: Message):
         reply_markup=level_keyboard
     )
 
+# Обработчик всех остальных сообщений, который обрабатывает выбор уровня и сценария, а также отправляет сообщения пользователя в OpenAI API и возвращает ответы
 @dp.message()
 async def chat(message: Message):
 
     user_id = message.from_user.id
     text = message.text
 
+    if user_id not in user_contexts:
+        reset_context(user_id)
+    
     if text in ["A2", "B1", "B2"]:
         user_levels[user_id] = text
 
@@ -207,6 +221,7 @@ async def chat(message: Message):
         await message.answer("Please select level and scenario first.")
         return
     
+    # Отправляем запрос в OpenAI API с учетом контекста пользователя и получаем ответ
     response = client.chat.completions.create(
         model="openai/gpt-5.3-chat",
         messages=user_contexts[user_id],
@@ -214,18 +229,20 @@ async def chat(message: Message):
         max_tokens=200
     )
 
+    # Получаем текст ответа и добавляем его в контекст пользователя
     reply = response.choices[0].message.content or "No response"
 
     user_contexts[user_id].append(
         {"role": "assistant", "content": reply}
     )
 
-    print(user_contexts[user_id])
 
     await message.answer(reply)
 
+# Запускаем бота
 async def main():
     await dp.start_polling(bot)
 
+# Запускаем функцию main, которая запускает бота и начинает обрабатывать входящие сообщения
 if __name__ == "__main__":
     asyncio.run(main())
