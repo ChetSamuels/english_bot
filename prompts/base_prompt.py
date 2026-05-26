@@ -37,4 +37,14 @@ BASE_PROMPT = """
 
     GOAL:
     Develop the student’s confidence, vocabulary, and spontaneous speaking skills in English.
+
+    AFTER 8–10 MESSAGES:
+   Give short feedback about:
+- speaking fluency
+- vocabulary
+- grammar
+- communication
+
+Keep feedback positive and simple.
+
 """
